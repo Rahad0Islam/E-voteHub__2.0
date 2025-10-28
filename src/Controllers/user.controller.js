@@ -2,7 +2,7 @@ import { User } from "../Models/User.Model.js";
 import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import { AsynHandler } from "../Utils/AsyncHandler.js";
-import { FileUpload } from "../Utils/Cloudinary.js";
+import { FileDelete, FileUpload } from "../Utils/Cloudinary.js";
 import jwt from 'jsonwebtoken';
 
 const Option={
@@ -189,9 +189,103 @@ const RenewAccesToken=AsynHandler(async(req,res)=>{
 
 })
 
+
+const ChangePassword=AsynHandler(async(req,res)=>{
+    const {NewPassword,OldPassword}=req.body
+    //check password is correct or wrong
+
+    const user=await User.findById(req.user?._id);
+    if(!user)throw new ApiError(401,"User not found ! ");
+
+    const IsPassCorr=await user.IsPasswordCorrect(OldPassword);
+    if(!IsPassCorr)throw new ApiError(401,"Current Password is incorrect! ");
+
+    user.Password=NewPassword;
+    const SavePass=await user.save({validateBeforeSave:false});   
+    console.log("Password changed successfully");
+
+    return res
+    .status(201)
+    .json(
+        new ApiResponse(201,{"savePass":SavePass},"Password changed successfully! ")
+    )
+
+})
+
+const UpdateProfilePic=AsynHandler(async(req,res)=>{
+      const ProfileImageLocalPath=req.file?.path;
+
+      if(!ProfileImageLocalPath)throw new ApiError(401,"profile picture required");
+
+     const DelOldProfile= await FileDelete(req.user?.ProfilePublicId);
+
+     if(!DelOldProfile)throw new ApiError(501,"Can not deleted Old Profile Picture");
+
+      console.log("deleted Old Profile Picture");
+
+     const NewProfilePic= await FileUpload(ProfileImageLocalPath);
+
+     if(!NewProfilePic)throw new ApiError(501,"can not upload profile picture in cloudinary ")
+     console.log("New Profile picture uploaded Succesfully ");
+
+     const user=await User.findByIdAndUpdate(req.user?._id,
+         {  
+            $set:{
+                ProfileImage:NewProfilePic.url,
+                ProfilePublicId:NewProfilePic.public_id
+                }
+        },{
+            new:true
+        }
+     ).select("-Password -RefreshToken");
+
+     return res
+     .status(201)
+     .json(
+        new ApiResponse(201,user,"profile pic updated succesfully! ")
+     )
+})
+
+
+const UpdateCoverPic=AsynHandler(async(req,res)=>{
+      const CoverImageLocalPath=req.file?.path;
+
+      if(!CoverImageLocalPath)throw new ApiError(401,"Cover picture required");
+
+     const DelOldCover= await FileDelete(req.user?.CoverPublicId);
+
+     if(!DelOldCover)throw new ApiError(501,"Can not deleted Old Cover Picture");
+
+      console.log("deleted Old Cover Picture");
+
+     const NewCoverPic= await FileUpload(CoverImageLocalPath);
+
+     if(!NewCoverPic)throw new ApiError(501,"can not upload Cover picture in cloudinary ")
+     console.log("New Cover picture uploaded Succesfully ");
+
+     const user=await User.findByIdAndUpdate(req.user?._id,
+         {  
+            $set:{
+                 CoverImage:NewCoverPic.url,
+                 CoverPublicId:NewCoverPic.public_id
+                }
+        },{
+            new:true
+        }
+     ).select("-Password -RefreshToken");
+
+     return res
+     .status(201)
+     .json(
+        new ApiResponse(201,user,"Cover pic updated succesfully! ")
+     )
+})
 export {
     Register,
     LogIn,
     LogOut,
-    RenewAccesToken
+    RenewAccesToken,
+    ChangePassword,
+    UpdateProfilePic,
+    UpdateCoverPic
 }
