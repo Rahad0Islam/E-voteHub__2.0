@@ -3,11 +3,14 @@ import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import { AsynHandler } from "../Utils/AsyncHandler.js";
 import { FileUpload } from "../Utils/Cloudinary.js";
+import jwt from 'jsonwebtoken';
 
 const Option={
     httpOnly:true,
     secure:true
 }
+
+
 const GenerateAccessAndRefreshToken=async function (UserID) {
 
   try {
@@ -130,18 +133,65 @@ const LogIn=AsynHandler(async(req,res)=>{
 })
 
 const LogOut=AsynHandler(async(req,res)=>{
+
+   const L_user= await User.findByIdAndUpdate(req.user._id,{
+        $unset:{RefreshToken:""}
+    },
+    {
+         new:true   //RETURN USER DB AFTER UPDATE
+    }
+
+    )
+        
+    
     console.log("Log out SuccesFully!");
     return res
     .status(201)
     .clearCookie('AccessToken',Option)
     .clearCookie('RefreshToken',Option)
     .json(
-        new ApiResponse(201,"Logout Succesfully!")
+        new ApiResponse(201,L_user,"Logout Succesfully!")
     )
+})
+
+const RenewAccesToken=AsynHandler(async(req,res)=>{
+      const IncomingRefreshToken=req.cookies?.RefreshToken || req.body?.RefreshToken
+       || (await User.findById(req.user?._id).select("RefreshToken"))?.RefreshToken;
+    
+
+        if(!IncomingRefreshToken)throw new ApiError(401,"Refresh token invalid !")
+
+
+        try {
+    
+          const Decode_User_id=jwt.verify(IncomingRefreshToken,process.env.REFRESS_TOKEN_SECRET);
+    
+          const user=await User.findById(Decode_User_id?._id);
+          if(!user)throw new ApiError(401,"invalid refresh token")
+    
+    
+          if(IncomingRefreshToken!==user?.RefreshToken)throw new ApiError(401,"Refresh token expired ")
+    
+          const{AccessToken,RefreshToken} = await GenerateAccessAndRefreshToken(user?._id);
+          console.log("renew the access token ");
+        
+          return res
+          .status(201)
+          .cookie("AccessToken",AccessToken,Option)
+          .cookie("RefreshToken",RefreshToken,Option)
+          .json(
+            new ApiResponse(201,{AccessToken,RefreshToken},"Renew the accesstoken !")
+          )
+
+    } catch (error) {
+        throw new ApiError(401,"invalid refresh token(catch)")
+    }
+
 })
 
 export {
     Register,
     LogIn,
-    LogOut
+    LogOut,
+    RenewAccesToken
 }

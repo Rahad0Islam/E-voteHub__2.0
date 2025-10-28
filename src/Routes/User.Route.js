@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../Middleware/Multer.Middleware.js";
-import { LogIn, LogOut, Register } from "../Controllers/user.controller.js";
+import { LogIn, LogOut, Register, RenewAccesToken } from "../Controllers/user.controller.js";
 import { jwtVerification } from "../Middleware/Authentication.Middleware.js";
 const router=Router();
 router.route('/register').post(
@@ -17,5 +17,6 @@ router.route('/register').post(
 )
 router.route("/login").post(upload.none(),LogIn);
 router.route("/logout").post(jwtVerification,LogOut);
+router.route("/renewaccestoken").post(RenewAccesToken)
 
 export default router

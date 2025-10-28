@@ -77,7 +77,7 @@ const UserSchema=new mongoose.Schema({
     },
 
     RefreshToken:{
-        type:String,
+        type:String
     },
 
     Role:{
