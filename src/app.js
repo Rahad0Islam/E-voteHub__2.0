@@ -27,7 +27,9 @@ app.use(cookieParser())
 
 //importing Routers
 import UserRoutes from './Routes/User.Route.js'
+import voteEvent from './Routes/VoteEvent.Route.js'
 app.use("/api/v1/users",UserRoutes)
+app.use("/api/V1/admin",voteEvent)
 
 
 export {app}
