@@ -1,6 +1,5 @@
 import { upload } from "../Middleware/Multer.Middleware.js";
 import { NomineeReg } from "../Models/Nominee.Model.js";
-import { User } from "../Models/User.Model.js";
 import { VoteCount } from "../Models/VoteCount.Model.js";
 import { VoteEvent } from "../Models/VoteEvent.Model.js";
 import { VoterReg } from "../Models/Voter.Model.js";
@@ -8,7 +7,8 @@ import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import { AsynHandler } from "../Utils/AsyncHandler.js";
 import { FileDelete, FileUpload } from "../Utils/Cloudinary.js";
-import jwt from 'jsonwebtoken';
+import mongoose from "mongoose";
+
 
 const CreateVoteEvent = AsynHandler(async(req,res)=>{
 
@@ -256,10 +256,77 @@ const GivenVote=AsynHandler(async(req,res)=>{
 
 })
 
+const CountingVote=AsynHandler(async(req,res)=>{
+    console.log("countvote");
+   
+
+     const {EventID}=req.body;
+     if(!EventID){
+        throw new ApiError(401,"EventID is required! ");
+     }
+    
+    
+      const eventObjectId = new mongoose.Types.ObjectId(EventID);
+
+     const NomineeListForSingleAndMultiVote=await  VoteCount.aggregate([
+        {$match:{EventID:eventObjectId,
+            ElectionType:{$in: ["Single","MultiVote"]}
+        }},
+        {$unwind:"$SelectedNominee"},
+        {
+            $group:{
+                _id:"$SelectedNominee.NomineeId",
+                TotalVote:{$sum:1}
+            }
+        },
+        {
+         $project: {
+        _id: 0,
+         NomineeID: "$_id",
+         TotalVote: 1
+     }
+       },
+     { $sort: { TotalVote: -1 } } 
+
+     ]);
+    
+    const NomineeListForRank=await  VoteCount.aggregate([
+        {$match:{EventID:eventObjectId,
+            ElectionType:"Rank"
+        }},
+        {$unwind:"$SelectedNominee"},
+        {
+            $group:{
+                _id:"$SelectedNominee.NomineeId",
+                TotalRank:{$sum:"$SelectedNominee.Rank"}
+            }
+        },
+        {
+         $project: {
+        _id: 0,
+         NomineeID: "$_id",
+         TotalRank: 1
+     }
+       },
+     { $sort: { TotalRank: 1 } } 
+
+     ]);
+    
+     
+    //  console.log(NomineeList);
+     return res
+     .status(201)
+     .json(
+        new ApiResponse(201,{NomineeListForRank,NomineeListForSingleAndMultiVote},"Votecount successfully! ")
+     )
+})
+
+
 export{
     CreateVoteEvent,
     NomineeRegister,
     VoterRegister,
-    GivenVote
+    GivenVote,
+    CountingVote
 
 }
