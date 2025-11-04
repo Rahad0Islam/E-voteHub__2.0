@@ -256,6 +256,7 @@ const GivenVote=AsynHandler(async(req,res)=>{
 
 })
 
+
 const CountingVote=AsynHandler(async(req,res)=>{
     console.log("countvote");
    
@@ -322,11 +323,133 @@ const CountingVote=AsynHandler(async(req,res)=>{
 })
 
 
+const NomineeApproved = AsynHandler(async (req, res) => {
+  const { EventID, NomineeID } = req.body;
+
+  if (req.user?.Role !== "admin") {
+    throw new ApiError(401, "You are not authorized as admin");
+  }
+
+  const Event = await VoteEvent.findById(EventID);
+  if (!Event) {
+    throw new ApiError(404, "Vote event not found");
+  }
+   
+
+
+  const NomineeRegForm = await NomineeReg.findOne({ EventID, UserID: NomineeID });
+  if (!NomineeRegForm) {
+    throw new ApiError(404, "Nominee not found for this event");
+  }
+   
+  if(NomineeRegForm.Approved){
+    throw new ApiError(402,"Already approved ! ")
+  }
+
+  NomineeRegForm.Approved = true;
+   await NomineeRegForm.save({ validateBeforeSave: false });
+
+    const nomineeImage = {
+    url: NomineeRegForm.SelectedBalot?.url,
+    publicId: NomineeRegForm.SelectedBalot?.publicId
+    };
+
+        if (!nomineeImage.url || !nomineeImage.publicId) {
+           throw new ApiError(400, "Nominee image data is missing");
+       }
+
+    
+
+  Event.UsedBallotImage.push(nomineeImage);
+
+    Event.BallotImage = Event.BallotImage.filter(
+    img => img.publicId !== NomineeRegForm.SelectedBalot?.publicId
+    );
+
+  await Event.save({ validateBeforeSave: false });
+
+  console.log("Nominee approved successfully!");
+  
+
+  return res.status(200).json(
+    new ApiResponse(200, NomineeRegForm, "Nominee approved successfully!")
+  );
+});
+
+const GetAllBallotImage=AsynHandler(async(req,res)=>{
+     const {EventID} =req.body;
+
+     if(!EventID){
+        throw new ApiError(401,"EventID required! ")
+     }
+
+     const Event = await VoteEvent.findById(EventID);
+     if (!Event) {
+        throw new ApiError(404, "Vote event not found");
+     }
+    
+      const allUrls = [
+        ...Event.BallotImage.map(img => img.url),
+        ...Event.UsedBallotImage.map(img => img.url)
+     ];
+
+  return res.status(200).json(
+    new ApiResponse(200, allUrls, "All ballot image URLs retrieved successfully")
+  );
+     
+})
+
+const GetAvailableBallotImage=AsynHandler(async(req,res)=>{
+      const {EventID} =req.body;
+
+     if(!EventID){
+        throw new ApiError(401,"EventID required! ")
+     }
+
+     const Event = await VoteEvent.findById(EventID);
+     if (!Event) {
+        throw new ApiError(404, "Vote event not found");
+     }
+    
+      const allUrls = [
+        ...Event.BallotImage.map(img => img.url),
+     ];
+
+  return res.status(200).json(
+    new ApiResponse(200, allUrls, "Available ballot image URLs retrieved successfully")
+  );
+})
+
+const GetUsedBallotImage=AsynHandler(async(req,res)=>{
+      const {EventID} =req.body;
+
+     if(!EventID){
+        throw new ApiError(401,"EventID required! ")
+     }
+
+     const Event = await VoteEvent.findById(EventID);
+     if (!Event) {
+        throw new ApiError(404, "Vote event not found");
+     }
+    
+      const allUrls = [
+        ...Event.UsedBallotImage.map(img => img.url)
+       ];
+
+      return res.status(200).json(
+    new ApiResponse(200, allUrls, "All Used ballot image URLs retrieved successfully")
+  );
+})
+
 export{
     CreateVoteEvent,
     NomineeRegister,
     VoterRegister,
     GivenVote,
-    CountingVote
+    CountingVote,
+    NomineeApproved,
+    GetAllBallotImage,
+    GetAvailableBallotImage,
+    GetUsedBallotImage
 
 }
