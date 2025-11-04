@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const VoteCountSchema= new mongoose.Schema({
      VoterID:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:"VoterReg"
+        ref:"User"
      },
      EventID:{
         type:mongoose.Schema.Types.ObjectId,
@@ -19,7 +19,7 @@ const VoteCountSchema= new mongoose.Schema({
      SelectedNominee:[{
         NomineeId:{
             type:mongoose.Schema.Types.ObjectId,
-            ref:"NomineeReg"
+            ref:"User"
         },
         Rank:{
             type:Number

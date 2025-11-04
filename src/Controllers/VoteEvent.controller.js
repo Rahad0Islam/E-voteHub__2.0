@@ -1,7 +1,9 @@
 import { upload } from "../Middleware/Multer.Middleware.js";
 import { NomineeReg } from "../Models/Nominee.Model.js";
 import { User } from "../Models/User.Model.js";
+import { VoteCount } from "../Models/VoteCount.Model.js";
 import { VoteEvent } from "../Models/VoteEvent.Model.js";
+import { VoterReg } from "../Models/Voter.Model.js";
 import { ApiError } from "../Utils/ApiError.js";
 import { ApiResponse } from "../Utils/ApiResponse.js";
 import { AsynHandler } from "../Utils/AsyncHandler.js";
@@ -99,6 +101,10 @@ const NomineeRegister=AsynHandler(async(req,res)=>{
          throw new ApiError(401,"You are already registered");
       } 
 
+      if (new Date() > new Date(Event.RegEndTime)) {
+          throw new ApiError(403, "Nominee Registration period has ended");
+       }
+
 
      const NomineeID=await NomineeReg.create({
          UserID,
@@ -120,12 +126,140 @@ const NomineeRegister=AsynHandler(async(req,res)=>{
 })
 
 
+const VoterRegister=AsynHandler(async(req,res)=>{
+     if (!req.body) {
+     throw new ApiError(400, "Request body is missing");
+       }
+
+
+     const {EventID}=req.body;
+    
+     if(!EventID){
+        throw new ApiError(401,"Event id are required");
+     }
+
+
+     const UserID=req.user?._id;
+     if(!UserID){
+        throw new ApiError(401,"User not found");
+     }
 
 
 
+      const Event = await VoteEvent.findById(EventID);
+      if (!Event) {
+           throw new ApiError(401, "Vote event not found");
+       }
+
+
+    const existingVoter = await VoterReg.findOne({ EventID, UserID });
+        if (existingVoter) {
+           throw new ApiError(409, "You are already registered to vote for this event");
+        }
+
+
+       if (new Date() > new Date(Event.RegEndTime)) {
+       throw new ApiError(403, "Registration period has ended");
+       }
+
+      const votingReg= await VoterReg.create({
+           EventID,
+           UserID,
+           
+       })
+    if(!votingReg){
+        throw new ApiError(501,"failed to register for vote");
+    }
+    console.log("successfully register for vote!");
+    return res
+    .status(201)
+    .json(
+        new ApiResponse(201,votingReg,"successfully register for vote!")
+    )
+})
+
+
+
+const GivenVote=AsynHandler(async(req,res)=>{
+     
+    const {EventID,ElectionType,SelectedNominee}=req.body;
+
+    const UserID=req.user?._id;
+    if(!EventID || !UserID || !ElectionType || !SelectedNominee){
+        throw new ApiError(401,"EventId and user invalid! ");
+    }
+
+
+    const DetailsVoteReg=await VoterReg.findOne({EventID,UserID});
+     
+
+    if(!DetailsVoteReg){
+        throw new ApiError(401,"You are not Registered!");
+    }
+
+
+    for (const nominee of SelectedNominee) {
+        const exists = await NomineeReg.findOne({
+        UserID: nominee.NomineeId,
+        EventID
+        });
+        if (!exists) {
+            throw new ApiError(404, `Nominee ${nominee.NomineeId} is not valid for this event`);
+        }
+     }
+
+
+    if(DetailsVoteReg.hasVoted){
+        throw new ApiError(401,"you are already given vote! ");
+    }
+    
+     const Event = await VoteEvent.findById(EventID);
+      if (!Event) {
+           throw new ApiError(401, "Vote event not found");
+       }
+        console.log("rahad");
+        const now = new Date();
+        const start = new Date(Event.VoteStartTime);
+        const end = new Date(Event.VoteEndTime);
+
+        console.log("Now:", now);
+        console.log("Start:", start);
+        console.log("End:", end);
+
+        if (now < start || now > end) {
+        throw new ApiError(403, "Voting is not currently open");}
+
+
+
+    const Vote= await VoteCount.create({
+        EventID,
+        VoterID:UserID,
+        ElectionType,
+        SelectedNominee,
+
+    })
+    if(!Vote){
+        throw new ApiError(501,"Given Vote failed!");
+    }
+    console.log("You are succesfully voted");
+
+
+
+    DetailsVoteReg.hasVoted=true;
+    await DetailsVoteReg.save({validateBeforeSave:false});
+    
+    return res
+    .status(201)
+    .json(
+        new ApiResponse(201,Vote,"You succesfully voted!")
+    )
+
+})
 
 export{
     CreateVoteEvent,
-    NomineeRegister
+    NomineeRegister,
+    VoterRegister,
+    GivenVote
 
 }

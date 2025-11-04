@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../Middleware/Multer.Middleware.js";
 import { jwtVerification } from "../Middleware/Authentication.Middleware.js";
-import { CreateVoteEvent, NomineeRegister } from "../Controllers/VoteEvent.controller.js";
+import { CreateVoteEvent, GivenVote, NomineeRegister, VoterRegister } from "../Controllers/VoteEvent.controller.js";
 const router=Router();
 
 router.route("/VoteEvent").post(jwtVerification,
@@ -16,5 +16,7 @@ router.route("/VoteEvent").post(jwtVerification,
     CreateVoteEvent)
 
 router.route("/nomineReg").post(jwtVerification,NomineeRegister)
+router.route("/voterReg").post(jwtVerification,VoterRegister)
+router.route("/voting").post(jwtVerification,GivenVote)
 
 export default router;
