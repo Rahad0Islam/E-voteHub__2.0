@@ -100,6 +100,8 @@ const Register=AsynHandler(async(req,res)=>{
 
 
 const LogIn=AsynHandler(async(req,res)=>{
+
+    
     const {UserName,Email,Password}=req.body;
 
     if ((!UserName?.trim() && !Email?.trim()) || !Password?.trim()) {

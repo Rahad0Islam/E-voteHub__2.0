@@ -441,6 +441,100 @@ const GetUsedBallotImage=AsynHandler(async(req,res)=>{
   );
 })
 
+
+const GetApprovedNominee = AsynHandler(async (req, res) => {
+  const { EventID } = req.body;
+
+  if (!EventID) {
+    throw new ApiError(401, "EventID is required!");
+  }
+
+  const NomineeDetails = await NomineeReg.find({ EventID, Approved: true }).select("UserID");
+
+  if (!NomineeDetails || NomineeDetails.length === 0) {
+    throw new ApiError(401, "No approved nominees found for this event");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      NomineeDetails,
+      count: NomineeDetails.length
+    }, "Approved nominees retrieved successfully")
+  );
+});
+
+
+const GetPendingNominee = AsynHandler(async (req, res) => {
+  const { EventID } = req.body;
+
+  if (!EventID) {
+    throw new ApiError(401, "EventID is required!");
+  }
+
+  const NomineeDetails = await NomineeReg.find({ EventID, Approved: false }).select("UserID");
+
+  if (!NomineeDetails || NomineeDetails.length === 0) {
+    throw new ApiError(401, "No pending nominees ");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      NomineeDetails,
+      count: NomineeDetails.length
+    }, "Pending nominees retrieved successfully")
+  );
+});
+
+
+const GetVoter=AsynHandler(async(req,res)=>{
+     const { EventID } = req.body;
+
+  if (!EventID) {
+    throw new ApiError(401, "EventID is required!");
+  }
+
+  const VoterDetails = await VoterReg.find({ EventID}).select("UserID");
+
+  if (!VoterDetails || VoterDetails.length === 0) {
+    throw new ApiError(401, "No voter found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      VoterDetails,
+      count: VoterDetails.length
+    }, "Voter details retrived successfully")
+  );
+
+})
+
+const getVoterPerticipate=AsynHandler(async(req,res)=>{
+       const { EventID } = req.body;
+
+  if (!EventID) {
+    throw new ApiError(401, "EventID is required!");
+  }
+
+  const GivenVoter = await VoterReg.find({ EventID,hasVoted:true}).select("UserID");
+
+  if (!GivenVoter || GivenVoter.length === 0) {
+    throw new ApiError(401, "voter found");
+  }
+
+  const nonVoter=await VoterReg.find({ EventID,hasVoted:false}).select("UserID");
+  
+   return res.status(200).json(
+    new ApiResponse(200, {
+      GivenVoter,
+      givenCount: GivenVoter.length,
+      nonVoter,
+      nonCount: nonVoter.length,
+      VoterPerticapteRate:GivenVoter.length/(GivenVoter.length+nonVoter.length)*100
+    }, "Successfully fetched all voter data!")
+  );
+})
+
+
 export{
     CreateVoteEvent,
     NomineeRegister,
@@ -450,6 +544,10 @@ export{
     NomineeApproved,
     GetAllBallotImage,
     GetAvailableBallotImage,
-    GetUsedBallotImage
+    GetUsedBallotImage,
+    GetApprovedNominee,
+    GetPendingNominee,
+    GetVoter,
+    getVoterPerticipate
 
 }
